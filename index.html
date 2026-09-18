@@ -499,8 +499,31 @@
   });
 
   // ---------- init ----------
+  async function autoLoadQuestions() {
+    if (state.questions.length) return;
+    try {
+      const res = await fetch("questions.json");
+      if (!res.ok) return;
+      const data = await res.json();
+      for (const item of data) {
+        state.questions.push({
+          id: crypto.randomUUID(),
+          text: String(item.text || ""),
+          voiceId: item.voiceId || "",
+          status: "none",
+          asked: false,
+        });
+      }
+      saveQuestions();
+      render();
+    } catch (e) {
+      console.warn("Nie udało się automatycznie wczytać questions.json:", e);
+    }
+  }
+
   renderDefaultVoiceSelect();
   render();
+  autoLoadQuestions();
 })();
 </script>
 </body>
