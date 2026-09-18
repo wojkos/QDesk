@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Q Desk</title>
+<style>
+  :root {
+    --bg: #0D0F12;
+    --panel: #15181E;
+    --panel2: #1B1F27;
+    --border: #2A2F3A;
+    --text: #E6E8EB;
+    --text-dim: #8A8F99;
+    --amber: #E8A33D;
+    --amber-dim: #4A3A20;
+    --green: #4FAE7E;
+    --red: #D9534F;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-width: 320px;
+  }
+  header {
+    padding: 16px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  header h1 { margin: 0; font-size: 20px; letter-spacing: 0.5px; }
+  #counter { font-size: 15px; color: var(--text-dim); }
+  #counter b { color: var(--amber); }
+  main { max-width: 900px; margin: 0 auto; padding: 16px; }
+  section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+  section h2 {
+    margin: 0 0 10px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-dim);
+  }
+  .hint { font-size: 12px; color: var(--text-dim); margin-top: 6px; }
+  .row-flex { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  input[type="text"], input[type="password"], select, textarea {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 14px;
+    font-family: inherit;
+  }
+  textarea { width: 100%; min-height: 80px; resize: vertical; }
+  input[type="password"] { flex: 1; min-width: 200px; }
+  button {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 9px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  button:hover { border-color: var(--amber); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.primary { background: var(--amber); color: #241a08; border-color: var(--amber); font-weight: 600; }
+  button.primary:hover { filter: brightness(1.08); }
+  button.danger { color: var(--red); border-color: var(--red); }
+  button.danger:hover { background: var(--red); color: #fff; }
+  button.icon { padding: 6px 10px; font-size: 13px; }
+  #questions-list .q-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  #questions-list .q-row:last-child { border-bottom: none; }
+  #questions-list .q-row.asked { opacity: 0.45; }
+  .q-order { display: flex; flex-direction: column; gap: 2px; }
+  .q-order button { padding: 2px 6px; font-size: 11px; line-height: 1; }
+  .q-text { flex: 1; min-width: 160px; cursor: text; padding: 4px 6px; border-radius: 4px; }
+  .q-text:hover { background: var(--panel2); }
+  .q-text input { width: 100%; }
+  .q-voice select { min-width: 130px; }
+  .status-badge {
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+    border: 1px solid transparent;
+  }
+  .status-none { color: var(--text-dim); border-color: var(--border); }
+  .status-generating { color: var(--amber); border-color: var(--amber); }
+  .status-ready { color: var(--green); border-color: var(--green); }
+  .status-error { color: var(--red); border-color: var(--red); }
+  #empty-msg { color: var(--text-dim); text-align: center; padding: 20px; }
+  #import-file { display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Q Desk</h1>
+  <div id="counter"></div>
+</header>
+
+<main>
+
+  <section id="settings-section">
+    <h2>Ustawienia ElevenLabs</h2>
+    <div class="row-flex">
+      <input type="password" id="api-key-input" placeholder="Klucz API ElevenLabs">
+      <button id="load-voices-btn">Wczytaj głosy</button>
+      <select id="default-voice-select"><option value="">Domyślny głos: —</option></select>
+    </div>
+    <div class="hint">Klucz zapisywany jest wyłącznie w tej przeglądarce (localStorage) i wysyłany bezpośrednio do api.elevenlabs.io — nigdy do żadnego innego serwera.</div>
+  </section>
+
+  <section id="add-section">
+    <h2>Dodaj pytania</h2>
+    <textarea id="bulk-textarea" placeholder="Wklej pytania, jedna linia = jedno pytanie"></textarea>
+    <div class="row-flex" style="margin-top:8px;">
+      <button class="primary" id="add-btn">Dodaj do listy</button>
+      <button id="export-btn">Eksportuj JSON</button>
+      <button id="import-btn">Importuj JSON</button>
+      <input type="file" id="import-file" accept="application/json">
+    </div>
+  </section>
+
+  <section id="bulk-actions">
+    <h2>Akcje zbiorcze</h2>
+    <div class="row-flex">
+      <button class="primary" id="generate-all-btn">Generuj wszystkie brakujące</button>
+      <button id="reset-all-btn">Resetuj wszystkie do niezadanych</button>
+    </div>
+  </section>
+
+  <section id="questions-section">
+    <h2>Lista pytań</h2>
+    <div id="questions-list"></div>
+    <div id="empty-msg" style="display:none;">Brak pytań. Wklej listę powyżej.</div>
+  </section>
+
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- storage ----------
+  const LS_KEYS = {
+    apiKey: "qdesk_apikey",
+    defaultVoice: "qdesk_default_voice",
+    voices: "qdesk_voices",
+    questions: "qdesk_questions",
+  };
+
+  const state = {
+    apiKey: localStorage.getItem(LS_KEYS.apiKey) || "",
+    defaultVoiceId: localStorage.getItem(LS_KEYS.defaultVoice) || "",
+    voices: JSON.parse(localStorage.getItem(LS_KEYS.voices) || "[]"),
+    questions: JSON.parse(localStorage.getItem(LS_KEYS.questions) || "[]"),
+    editingId: null,
+  };
+
+  function saveQuestions() { localStorage.setItem(LS_KEYS.questions, JSON.stringify(state.questions)); }
+  function saveApiKey() { localStorage.setItem(LS_KEYS.apiKey, state.apiKey); }
+  function saveDefaultVoice() { localStorage.setItem(LS_KEYS.defaultVoice, state.defaultVoiceId); }
+  function saveVoices() { localStorage.setItem(LS_KEYS.voices, JSON.stringify(state.voices)); }
+
+  // ---------- IndexedDB (audio blobs) ----------
+  const DB_NAME = "qdesk";
+  const STORE = "audio";
+  const dbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  async function saveAudio(id, blob) {
+    const db = await dbPromise;
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, "readwrite");
+      tx.objectStore(STORE).put(blob, id);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+  async function loadAudio(id) {
+    const db = await dbPromise;
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, "readonly");
+      const req = tx.objectStore(STORE).get(id);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function deleteAudio(id) {
+    const db = await dbPromise;
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, "readwrite");
+      tx.objectStore(STORE).delete(id);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  const player = new Audio();
+
+  // ---------- DOM refs ----------
+  const apiKeyInput = document.getElementById("api-key-input");
+  const loadVoicesBtn = document.getElementById("load-voices-btn");
+  const defaultVoiceSelect = document.getElementById("default-voice-select");
+  const bulkTextarea = document.getElementById("bulk-textarea");
+  const addBtn = document.getElementById("add-btn");
+  const exportBtn = document.getElementById("export-btn");
+  const importBtn = document.getElementById("import-btn");
+  const importFile = document.getElementById("import-file");
+  const generateAllBtn = document.getElementById("generate-all-btn");
+  const resetAllBtn = document.getElementById("reset-all-btn");
+  const questionsList = document.getElementById("questions-list");
+  const emptyMsg = document.getElementById("empty-msg");
+  const counterEl = document.getElementById("counter");
+
+  apiKeyInput.value = state.apiKey;
+
+  // ---------- rendering ----------
+  function voiceOptionsHtml(selectedId) {
+    return state.voices.map(v =>
+      `<option value="${v.voice_id}" ${v.voice_id === selectedId ? "selected" : ""}>${escapeHtml(v.name)}</option>`
+    ).join("");
+  }
+
+  function renderDefaultVoiceSelect() {
+    defaultVoiceSelect.innerHTML =
+      `<option value="">Domyślny głos: —</option>` + voiceOptionsHtml(state.defaultVoiceId);
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function statusLabel(q) {
+    switch (q.status) {
+      case "generating": return { text: "generowanie…", cls: "status-generating" };
+      case "ready": return { text: "gotowe", cls: "status-ready" };
+      case "error": return { text: "błąd generowania", cls: "status-error" };
+      default: return { text: "niewygenerowane", cls: "status-none" };
+    }
+  }
+
+  function render() {
+    counterEl.innerHTML = `<b>${state.questions.filter(q => q.asked).length}</b> / ${state.questions.length} zadanych`;
+    emptyMsg.style.display = state.questions.length ? "none" : "block";
+
+    questionsList.innerHTML = state.questions.map((q, i) => {
+      const st = statusLabel(q);
+      const isEditing = state.editingId === q.id;
+      const textHtml = isEditing
+        ? `<input type="text" class="q-text-input" data-id="${q.id}" value="${escapeHtml(q.text)}">`
+        : `<span class="q-text" data-id="${q.id}">${escapeHtml(q.text)}</span>`;
+      const genBtnLabel = q.status === "generating" ? "Generowanie…" : (q.status === "ready" || q.status === "error" ? "Regeneruj" : "Generuj");
+
+      return `
+        <div class="q-row ${q.asked ? "asked" : ""}" data-id="${q.id}">
+          <div class="q-order">
+            <button class="icon" data-action="up" data-id="${q.id}" ${i === 0 ? "disabled" : ""}>▲</button>
+            <button class="icon" data-action="down" data-id="${q.id}" ${i === state.questions.length - 1 ? "disabled" : ""}>▼</button>
+          </div>
+          ${textHtml}
+          <div class="q-voice">
+            <select data-action="voice" data-id="${q.id}">
+              <option value="">Domyślny</option>
+              ${voiceOptionsHtml(q.voiceId)}
+            </select>
+          </div>
+          <span class="status-badge ${st.cls}">${st.text}</span>
+          <button data-action="generate" data-id="${q.id}" ${q.status === "generating" ? "disabled" : ""}>${genBtnLabel}</button>
+          <button data-action="ask" data-id="${q.id}" ${q.status !== "ready" ? "disabled" : ""}>▶ Zapytaj</button>
+          ${q.asked ? `<button data-action="restore" data-id="${q.id}">Przywróć</button>` : ""}
+          <button class="danger" data-action="delete" data-id="${q.id}">Usuń</button>
+        </div>`;
+    }).join("");
+  }
+
+  // ---------- settings actions ----------
+  apiKeyInput.addEventListener("change", () => {
+    state.apiKey = apiKeyInput.value.trim();
+    saveApiKey();
+  });
+
+  loadVoicesBtn.addEventListener("click", async () => {
+    if (!state.apiKey) { alert("Wpisz najpierw klucz API."); return; }
+    loadVoicesBtn.disabled = true;
+    loadVoicesBtn.textContent = "Wczytywanie…";
+    try {
+      const res = await fetch("https://api.elevenlabs.io/v1/voices", {
+        headers: { "xi-api-key": state.apiKey },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      state.voices = (data.voices || []).map(v => ({ voice_id: v.voice_id, name: v.name }));
+      saveVoices();
+      renderDefaultVoiceSelect();
+      render();
+    } catch (e) {
+      alert("Nie udało się wczytać głosów: " + e.message);
+    } finally {
+      loadVoicesBtn.disabled = false;
+      loadVoicesBtn.textContent = "Wczytaj głosy";
+    }
+  });
+
+  defaultVoiceSelect.addEventListener("change", () => {
+    state.defaultVoiceId = defaultVoiceSelect.value;
+    saveDefaultVoice();
+  });
+
+  // ---------- add / export / import ----------
+  addBtn.addEventListener("click", () => {
+    const lines = bulkTextarea.value.split("\n").map(l => l.trim()).filter(Boolean);
+    for (const text of lines) {
+      state.questions.push({ id: crypto.randomUUID(), text, voiceId: "", status: "none", asked: false });
+    }
+    bulkTextarea.value = "";
+    saveQuestions();
+    render();
+  });
+
+  exportBtn.addEventListener("click", () => {
+    const data = state.questions.map(q => ({ text: q.text, voiceId: q.voiceId }));
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "qdesk-questions.json";
+    a.click();
+  });
+
+  importBtn.addEventListener("click", () => importFile.click());
+  importFile.addEventListener("change", async () => {
+    const file = importFile.files[0];
+    if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      for (const item of data) {
+        state.questions.push({
+          id: crypto.randomUUID(),
+          text: String(item.text || ""),
+          voiceId: item.voiceId || "",
+          status: "none",
+          asked: false,
+        });
+      }
+      saveQuestions();
+      render();
+    } catch (e) {
+      alert("Nieprawidłowy plik JSON: " + e.message);
+    } finally {
+      importFile.value = "";
+    }
+  });
+
+  // ---------- generation ----------
+  async function generateAudio(q) {
+    q.status = "generating";
+    saveQuestions();
+    render();
+    try {
+      const voiceId = q.voiceId || state.defaultVoiceId;
+      if (!voiceId) throw new Error("brak wybranego głosu");
+      if (!state.apiKey) throw new Error("brak klucza API");
+      const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+        method: "POST",
+        headers: {
+          "xi-api-key": state.apiKey,
+          "Content-Type": "application/json",
+          "Accept": "audio/mpeg",
+        },
+        body: JSON.stringify({ text: q.text, model_id: "eleven_multilingual_v2" }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      await saveAudio(q.id, blob);
+      q.status = "ready";
+    } catch (e) {
+      q.status = "error";
+      console.error("Generowanie audio nie powiodło się:", e);
+    }
+    saveQuestions();
+    render();
+  }
+
+  generateAllBtn.addEventListener("click", async () => {
+    // ponytail: sequential, not parallel — avoids hammering the ElevenLabs rate limit before a live event
+    for (const q of state.questions) {
+      if (q.status !== "ready") await generateAudio(q);
+    }
+  });
+
+  resetAllBtn.addEventListener("click", () => {
+    for (const q of state.questions) q.asked = false;
+    saveQuestions();
+    render();
+  });
+
+  // ---------- row actions (event delegation) ----------
+  questionsList.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (btn) {
+      const id = btn.dataset.id;
+      const q = state.questions.find(q => q.id === id);
+      if (!q) return;
+      const idx = state.questions.indexOf(q);
+      switch (btn.dataset.action) {
+        case "up":
+          if (idx > 0) [state.questions[idx - 1], state.questions[idx]] = [state.questions[idx], state.questions[idx - 1]];
+          saveQuestions(); render();
+          break;
+        case "down":
+          if (idx < state.questions.length - 1) [state.questions[idx + 1], state.questions[idx]] = [state.questions[idx], state.questions[idx + 1]];
+          saveQuestions(); render();
+          break;
+        case "delete":
+          if (confirm("Usunąć to pytanie?")) {
+            state.questions.splice(idx, 1);
+            await deleteAudio(id);
+            saveQuestions(); render();
+          }
+          break;
+        case "generate":
+          generateAudio(q);
+          break;
+        case "ask": {
+          if (q.status !== "ready") return;
+          q.asked = true;
+          saveQuestions(); render();
+          const blob = await loadAudio(q.id);
+          if (blob) {
+            player.pause();
+            player.src = URL.createObjectURL(blob);
+            player.play();
+          }
+          break;
+        }
+        case "restore":
+          q.asked = false;
+          saveQuestions(); render();
+          break;
+      }
+      return;
+    }
+
+    const textEl = e.target.closest(".q-text");
+    if (textEl) {
+      state.editingId = textEl.dataset.id;
+      render();
+      const input = questionsList.querySelector(".q-text-input");
+      if (input) { input.focus(); input.select(); }
+    }
+  });
+
+  questionsList.addEventListener("change", (e) => {
+    const sel = e.target.closest("select[data-action='voice']");
+    if (sel) {
+      const q = state.questions.find(q => q.id === sel.dataset.id);
+      if (q) { q.voiceId = sel.value; saveQuestions(); }
+    }
+  });
+
+  function commitEdit(input) {
+    const q = state.questions.find(q => q.id === input.dataset.id);
+    if (q) q.text = input.value.trim() || q.text;
+    state.editingId = null;
+    saveQuestions();
+    render();
+  }
+  questionsList.addEventListener("blur", (e) => {
+    if (e.target.classList.contains("q-text-input")) commitEdit(e.target);
+  }, true);
+  questionsList.addEventListener("keydown", (e) => {
+    if (e.target.classList.contains("q-text-input") && e.key === "Enter") commitEdit(e.target);
+  });
+
+  // ---------- init ----------
+  renderDefaultVoiceSelect();
+  render();
+})();
+</script>
+</body>
+</html>
