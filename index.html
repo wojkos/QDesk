@@ -169,6 +169,7 @@
     <div class="row-flex">
       <button class="primary" id="generate-all-btn">Generate All Missing</button>
       <button id="reset-all-btn">Reset All to Unasked</button>
+      <button id="randomize-voices-btn">Randomize Voices</button>
     </div>
   </section>
 
@@ -272,6 +273,7 @@
   const importFile = document.getElementById("import-file");
   const generateAllBtn = document.getElementById("generate-all-btn");
   const resetAllBtn = document.getElementById("reset-all-btn");
+  const randomizeVoicesBtn = document.getElementById("randomize-voices-btn");
   const questionsList = document.getElementById("questions-list");
   const emptyMsg = document.getElementById("empty-msg");
   const counterEl = document.getElementById("counter");
@@ -478,6 +480,13 @@
 
   resetAllBtn.addEventListener("click", () => {
     for (const q of state.questions) q.asked = false;
+    saveQuestions();
+    render();
+  });
+
+  randomizeVoicesBtn.addEventListener("click", () => {
+    if (!state.voices.length) { alert("Load voices first."); return; }
+    state.questions.forEach((q, i) => { q.voiceId = state.voices[i % state.voices.length].voice_id; });
     saveQuestions();
     render();
   });
