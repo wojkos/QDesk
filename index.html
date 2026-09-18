@@ -216,6 +216,7 @@
     voices: JSON.parse(localStorage.getItem(LS_KEYS.voices) || "[]"),
     questions: JSON.parse(localStorage.getItem(LS_KEYS.questions) || "[]"),
     editingId: null,
+    playingId: null,
   };
 
   function saveQuestions() { localStorage.setItem(LS_KEYS.questions, JSON.stringify(state.questions)); }
@@ -261,6 +262,9 @@
   }
 
   const player = new Audio();
+  player.addEventListener("play", render);
+  player.addEventListener("pause", render);
+  player.addEventListener("ended", () => { state.playingId = null; render(); });
 
   // ---------- DOM refs ----------
   const apiKeyInput = document.getElementById("api-key-input");
@@ -320,7 +324,6 @@
     counterEl.innerHTML = `<b>${state.questions.filter(q => q.asked).length}</b> / ${state.questions.length} asked`;
     emptyMsg.style.display = state.questions.length ? "none" : "block";
 
-    let lastHeader = null;
     const html = state.questions.map((q, i) => {
       const st = statusLabel(q);
       const isEditing = state.editingId === q.id;
@@ -329,11 +332,7 @@
         : `<span class="q-text" data-id="${q.id}">${escapeHtml(q.text)}</span>`;
       const genBtnLabel = q.status === "generating" ? "Generating..." : (q.status === "ready" || q.status === "error" ? "Regenerate" : "Generate");
 
-      let headerHtml = "";
-      if (q.header && q.header !== lastHeader) {
-        headerHtml = `<div class="q-header">${escapeHtml(q.header)}</div>`;
-        lastHeader = q.header;
-      }
+      const headerHtml = q.header ? `<div class="q-header">${escapeHtml(q.header)}</div>` : "";
 
       return headerHtml + `
         <div class="q-row ${q.asked ? "asked" : ""}" data-id="${q.id}">
@@ -351,8 +350,9 @@
             </div>
             <div class="q-controls-row">
               <span class="status-badge ${st.cls}">${st.text}</span>
+              <button data-action="bump" data-id="${q.id}" ${i === 0 ? "disabled" : ""}>⤒ Bump</button>
               <button data-action="generate" data-id="${q.id}" ${q.status === "generating" ? "disabled" : ""}>${genBtnLabel}</button>
-              <button data-action="ask" data-id="${q.id}" ${q.status !== "ready" ? "disabled" : ""}>▶ Ask</button>
+              <button data-action="ask" data-id="${q.id}" ${q.status !== "ready" ? "disabled" : ""}>${state.playingId === q.id && !player.paused ? "⏸ Pause" : (state.playingId === q.id ? "▶ Resume" : "▶ Ask")}</button>
               ${q.asked ? `<button data-action="restore" data-id="${q.id}">Restore</button>` : ""}
               <button class="danger" data-action="delete" data-id="${q.id}">Delete</button>
             </div>
@@ -518,6 +518,10 @@
           if (idx < state.questions.length - 1) [state.questions[idx + 1], state.questions[idx]] = [state.questions[idx], state.questions[idx + 1]];
           saveQuestions(); render();
           break;
+        case "bump":
+          if (idx > 0) { state.questions.splice(idx, 1); state.questions.unshift(q); }
+          saveQuestions(); render();
+          break;
         case "delete":
           if (confirm("Delete this question?")) {
             state.questions.splice(idx, 1);
@@ -530,14 +534,21 @@
           break;
         case "ask": {
           if (q.status !== "ready") return;
+          if (state.playingId === q.id) {
+            if (player.paused) player.play(); else player.pause();
+            render();
+            break;
+          }
           q.asked = true;
-          saveQuestions(); render();
+          saveQuestions();
           const blob = await loadAudio(q.id);
           if (blob) {
             player.pause();
             player.src = URL.createObjectURL(blob);
+            state.playingId = q.id;
             player.play();
           }
+          render();
           break;
         }
         case "restore":
