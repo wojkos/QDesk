@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -38,7 +38,23 @@
   header h1 { margin: 0; font-size: 20px; letter-spacing: 0.5px; }
   #counter { font-size: 15px; color: var(--text-dim); }
   #counter b { color: var(--amber); }
-  main { max-width: 900px; margin: 0 auto; padding: 16px; }
+  .layout { display: flex; gap: 16px; max-width: 1200px; margin: 0 auto; padding: 16px; align-items: flex-start; }
+  main { flex: 1; min-width: 0; }
+  aside#voices-aside {
+    width: 240px;
+    flex-shrink: 0;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    position: sticky;
+    top: 16px;
+    display: none;
+  }
+  aside#voices-aside h2 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim); }
+  .voice-test-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .voice-test-row:last-child { border-bottom: none; }
+  .voice-test-row .voice-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
   section {
     background: var(--panel);
     border: 1px solid var(--border);
@@ -53,6 +69,17 @@
     letter-spacing: 0.8px;
     color: var(--text-dim);
   }
+  .q-header {
+    margin: 12px 0 8px;
+    padding: 8px 0 6px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--amber);
+    font-weight: 600;
+  }
+  .q-header:first-child { margin-top: 0; }
   .hint { font-size: 12px; color: var(--text-dim); margin-top: 6px; }
   .row-flex { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
   input[type="text"], input[type="password"], select, textarea {
@@ -98,6 +125,7 @@
   .q-text { flex: 1; min-width: 160px; cursor: text; padding: 4px 6px; border-radius: 4px; }
   .q-text:hover { background: var(--panel2); }
   .q-text input { width: 100%; }
+  .q-text-input { flex: 1; min-width: 160px; padding: 4px 6px; border-radius: 4px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); font-size: 14px; font-family: inherit; resize: vertical; line-height: 1.4; }
   .q-voice select { min-width: 130px; }
   .status-badge {
     font-size: 12px;
@@ -121,44 +149,51 @@
   <div id="counter"></div>
 </header>
 
+<div class="layout">
 <main>
 
   <section id="settings-section">
-    <h2>Ustawienia ElevenLabs</h2>
+    <h2>ElevenLabs Settings</h2>
     <div class="row-flex">
-      <input type="password" id="api-key-input" placeholder="Klucz API ElevenLabs">
-      <button id="load-voices-btn">Wczytaj głosy</button>
-      <select id="default-voice-select"><option value="">Domyślny głos: —</option></select>
+      <input type="password" id="api-key-input" placeholder="ElevenLabs API Key">
+      <button id="load-voices-btn">Load Voices</button>
+      <select id="default-voice-select"><option value="">Default Voice: —</option></select>
     </div>
-    <div class="hint">Klucz zapisywany jest wyłącznie w tej przeglądarce (localStorage) i wysyłany bezpośrednio do api.elevenlabs.io — nigdy do żadnego innego serwera.</div>
+    <div class="hint">Key saved only in this browser (localStorage) and sent directly to api.elevenlabs.io — never to any other server.</div>
   </section>
 
   <section id="add-section">
-    <h2>Dodaj pytania</h2>
-    <textarea id="bulk-textarea" placeholder="Wklej pytania, jedna linia = jedno pytanie"></textarea>
+    <h2>Add Questions</h2>
+    <textarea id="bulk-textarea" placeholder="Paste questions, one line = one question"></textarea>
     <div class="row-flex" style="margin-top:8px;">
-      <button class="primary" id="add-btn">Dodaj do listy</button>
-      <button id="export-btn">Eksportuj JSON</button>
-      <button id="import-btn">Importuj JSON</button>
+      <button class="primary" id="add-btn">Add to List</button>
+      <button id="export-btn">Export JSON</button>
+      <button id="import-btn">Import JSON</button>
       <input type="file" id="import-file" accept="application/json">
     </div>
   </section>
 
   <section id="bulk-actions">
-    <h2>Akcje zbiorcze</h2>
+    <h2>Bulk Actions</h2>
     <div class="row-flex">
-      <button class="primary" id="generate-all-btn">Generuj wszystkie brakujące</button>
-      <button id="reset-all-btn">Resetuj wszystkie do niezadanych</button>
+      <button class="primary" id="generate-all-btn">Generate All Missing</button>
+      <button id="reset-all-btn">Reset All to Unasked</button>
     </div>
   </section>
 
   <section id="questions-section">
-    <h2>Lista pytań</h2>
+    <h2>Questions List</h2>
     <div id="questions-list"></div>
-    <div id="empty-msg" style="display:none;">Brak pytań. Wklej listę powyżej.</div>
+    <div id="empty-msg" style="display:none;">No questions. Paste a list above.</div>
   </section>
 
 </main>
+
+<aside id="voices-aside">
+  <h2>Voice Testing</h2>
+  <div id="voices-test-list"></div>
+</aside>
+</div>
 
 <script>
 (function () {
@@ -238,6 +273,8 @@
   const questionsList = document.getElementById("questions-list");
   const emptyMsg = document.getElementById("empty-msg");
   const counterEl = document.getElementById("counter");
+  const voicesAside = document.getElementById("voices-aside");
+  const voicesTestList = document.getElementById("voices-test-list");
 
   apiKeyInput.value = state.apiKey;
 
@@ -250,7 +287,16 @@
 
   function renderDefaultVoiceSelect() {
     defaultVoiceSelect.innerHTML =
-      `<option value="">Domyślny głos: —</option>` + voiceOptionsHtml(state.defaultVoiceId);
+      `<option value="">Default Voice: —</option>` + voiceOptionsHtml(state.defaultVoiceId);
+  }
+
+  function renderVoicesAside() {
+    voicesAside.style.display = state.voices.length ? "block" : "none";
+    voicesTestList.innerHTML = state.voices.map(v => `
+      <div class="voice-test-row">
+        <span class="voice-name" title="${escapeHtml(v.name)}">${escapeHtml(v.name)}</span>
+        <button class="icon" data-action="test-voice" data-id="${v.voice_id}" ${v.preview_url ? "" : "disabled"}>▶</button>
+      </div>`).join("");
   }
 
   function escapeHtml(s) {
@@ -259,26 +305,33 @@
 
   function statusLabel(q) {
     switch (q.status) {
-      case "generating": return { text: "generowanie…", cls: "status-generating" };
-      case "ready": return { text: "gotowe", cls: "status-ready" };
-      case "error": return { text: "błąd generowania", cls: "status-error" };
-      default: return { text: "niewygenerowane", cls: "status-none" };
+      case "generating": return { text: "generating...", cls: "status-generating" };
+      case "ready": return { text: "ready", cls: "status-ready" };
+      case "error": return { text: "generation error", cls: "status-error" };
+      default: return { text: "not generated", cls: "status-none" };
     }
   }
 
   function render() {
-    counterEl.innerHTML = `<b>${state.questions.filter(q => q.asked).length}</b> / ${state.questions.length} zadanych`;
+    counterEl.innerHTML = `<b>${state.questions.filter(q => q.asked).length}</b> / ${state.questions.length} asked`;
     emptyMsg.style.display = state.questions.length ? "none" : "block";
 
-    questionsList.innerHTML = state.questions.map((q, i) => {
+    let lastHeader = null;
+    const html = state.questions.map((q, i) => {
       const st = statusLabel(q);
       const isEditing = state.editingId === q.id;
       const textHtml = isEditing
-        ? `<input type="text" class="q-text-input" data-id="${q.id}" value="${escapeHtml(q.text)}">`
+        ? `<textarea class="q-text-input" data-id="${q.id}" rows="3">${escapeHtml(q.text)}</textarea>`
         : `<span class="q-text" data-id="${q.id}">${escapeHtml(q.text)}</span>`;
-      const genBtnLabel = q.status === "generating" ? "Generowanie…" : (q.status === "ready" || q.status === "error" ? "Regeneruj" : "Generuj");
+      const genBtnLabel = q.status === "generating" ? "Generating..." : (q.status === "ready" || q.status === "error" ? "Regenerate" : "Generate");
 
-      return `
+      let headerHtml = "";
+      if (q.header && q.header !== lastHeader) {
+        headerHtml = `<div class="q-header">${escapeHtml(q.header)}</div>`;
+        lastHeader = q.header;
+      }
+
+      return headerHtml + `
         <div class="q-row ${q.asked ? "asked" : ""}" data-id="${q.id}">
           <div class="q-order">
             <button class="icon" data-action="up" data-id="${q.id}" ${i === 0 ? "disabled" : ""}>▲</button>
@@ -287,17 +340,18 @@
           ${textHtml}
           <div class="q-voice">
             <select data-action="voice" data-id="${q.id}">
-              <option value="">Domyślny</option>
+              <option value="">Default</option>
               ${voiceOptionsHtml(q.voiceId)}
             </select>
           </div>
           <span class="status-badge ${st.cls}">${st.text}</span>
           <button data-action="generate" data-id="${q.id}" ${q.status === "generating" ? "disabled" : ""}>${genBtnLabel}</button>
-          <button data-action="ask" data-id="${q.id}" ${q.status !== "ready" ? "disabled" : ""}>▶ Zapytaj</button>
-          ${q.asked ? `<button data-action="restore" data-id="${q.id}">Przywróć</button>` : ""}
-          <button class="danger" data-action="delete" data-id="${q.id}">Usuń</button>
+          <button data-action="ask" data-id="${q.id}" ${q.status !== "ready" ? "disabled" : ""}>▶ Ask</button>
+          ${q.asked ? `<button data-action="restore" data-id="${q.id}">Restore</button>` : ""}
+          <button class="danger" data-action="delete" data-id="${q.id}">Delete</button>
         </div>`;
     }).join("");
+    questionsList.innerHTML = html;
   }
 
   // ---------- settings actions ----------
@@ -307,24 +361,25 @@
   });
 
   loadVoicesBtn.addEventListener("click", async () => {
-    if (!state.apiKey) { alert("Wpisz najpierw klucz API."); return; }
+    if (!state.apiKey) { alert("Please enter the API key first."); return; }
     loadVoicesBtn.disabled = true;
-    loadVoicesBtn.textContent = "Wczytywanie…";
+    loadVoicesBtn.textContent = "Loading...";
     try {
       const res = await fetch("https://api.elevenlabs.io/v1/voices", {
         headers: { "xi-api-key": state.apiKey },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      state.voices = (data.voices || []).map(v => ({ voice_id: v.voice_id, name: v.name }));
+      state.voices = (data.voices || []).map(v => ({ voice_id: v.voice_id, name: v.name, preview_url: v.preview_url || "" }));
       saveVoices();
       renderDefaultVoiceSelect();
+      renderVoicesAside();
       render();
     } catch (e) {
-      alert("Nie udało się wczytać głosów: " + e.message);
+      alert("Failed to load voices: " + e.message);
     } finally {
       loadVoicesBtn.disabled = false;
-      loadVoicesBtn.textContent = "Wczytaj głosy";
+      loadVoicesBtn.textContent = "Load Voices";
     }
   });
 
@@ -337,7 +392,7 @@
   addBtn.addEventListener("click", () => {
     const lines = bulkTextarea.value.split("\n").map(l => l.trim()).filter(Boolean);
     for (const text of lines) {
-      state.questions.push({ id: crypto.randomUUID(), text, voiceId: "", status: "none", asked: false });
+      state.questions.push({ id: crypto.randomUUID(), text, voiceId: "", header: "", status: "none", asked: false });
     }
     bulkTextarea.value = "";
     saveQuestions();
@@ -345,7 +400,7 @@
   });
 
   exportBtn.addEventListener("click", () => {
-    const data = state.questions.map(q => ({ text: q.text, voiceId: q.voiceId }));
+    const data = state.questions.map(q => ({ text: q.text, voiceId: q.voiceId, ...(q.header && { header: q.header }) }));
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -364,6 +419,7 @@
           id: crypto.randomUUID(),
           text: String(item.text || ""),
           voiceId: item.voiceId || "",
+          header: item.header || "",
           status: "none",
           asked: false,
         });
@@ -371,7 +427,7 @@
       saveQuestions();
       render();
     } catch (e) {
-      alert("Nieprawidłowy plik JSON: " + e.message);
+      alert("Invalid JSON file: " + e.message);
     } finally {
       importFile.value = "";
     }
@@ -384,8 +440,8 @@
     render();
     try {
       const voiceId = q.voiceId || state.defaultVoiceId;
-      if (!voiceId) throw new Error("brak wybranego głosu");
-      if (!state.apiKey) throw new Error("brak klucza API");
+      if (!voiceId) throw new Error("no voice selected");
+      if (!state.apiKey) throw new Error("no API key");
       const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
         method: "POST",
         headers: {
@@ -401,7 +457,7 @@
       q.status = "ready";
     } catch (e) {
       q.status = "error";
-      console.error("Generowanie audio nie powiodło się:", e);
+      console.error("Audio generation failed:", e);
     }
     saveQuestions();
     render();
@@ -418,6 +474,16 @@
     for (const q of state.questions) q.asked = false;
     saveQuestions();
     render();
+  });
+
+  voicesTestList.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-action='test-voice']");
+    if (!btn) return;
+    const v = state.voices.find(v => v.voice_id === btn.dataset.id);
+    if (!v || !v.preview_url) return;
+    player.pause();
+    player.src = v.preview_url;
+    player.play();
   });
 
   // ---------- row actions (event delegation) ----------
@@ -438,7 +504,7 @@
           saveQuestions(); render();
           break;
         case "delete":
-          if (confirm("Usunąć to pytanie?")) {
+          if (confirm("Delete this question?")) {
             state.questions.splice(idx, 1);
             await deleteAudio(id);
             saveQuestions(); render();
@@ -510,6 +576,7 @@
           id: crypto.randomUUID(),
           text: String(item.text || ""),
           voiceId: item.voiceId || "",
+          header: item.header || "",
           status: "none",
           asked: false,
         });
@@ -517,11 +584,12 @@
       saveQuestions();
       render();
     } catch (e) {
-      console.warn("Nie udało się automatycznie wczytać questions.json:", e);
+      console.warn("Failed to auto-load questions.json:", e);
     }
   }
 
   renderDefaultVoiceSelect();
+  renderVoicesAside();
   render();
   autoLoadQuestions();
 })();
