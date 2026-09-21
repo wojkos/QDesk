@@ -154,16 +154,6 @@
 <div class="layout">
 <main>
 
-  <section id="settings-section">
-    <h2>ElevenLabs Settings</h2>
-    <div class="row-flex">
-      <input type="password" id="api-key-input" placeholder="ElevenLabs API Key">
-      <button id="load-voices-btn">Load Voices</button>
-      <select id="default-voice-select"><option value="">Default Voice: —</option></select>
-    </div>
-    <div class="hint">Key saved only in this browser (localStorage) and sent directly to api.elevenlabs.io — never to any other server.</div>
-  </section>
-
   <section id="bulk-actions">
     <h2>Bulk Actions</h2>
     <div class="row-flex">
@@ -188,6 +178,16 @@
       <button id="import-btn">Import JSON</button>
       <input type="file" id="import-file" accept="application/json">
     </div>
+  </section>
+
+  <section id="settings-section">
+    <h2>ElevenLabs Settings</h2>
+    <div class="row-flex">
+      <input type="password" id="api-key-input" placeholder="ElevenLabs API Key">
+      <button id="load-voices-btn">Load Voices</button>
+      <select id="default-voice-select"><option value="">Default Voice: —</option></select>
+    </div>
+    <div class="hint">Key saved only in this browser (localStorage) and sent directly to api.elevenlabs.io — never to any other server. <strong>Use a short-lived API key</strong> to protect your account if logs are exposed.</div>
   </section>
 
   <aside id="voices-aside">
@@ -336,7 +336,7 @@
         : `<span class="q-text" data-id="${q.id}">${escapeHtml(q.text)}</span>`;
       const genBtnLabel = q.status === "generating" ? "Generating..." : (q.status === "ready" || q.status === "error" ? "Regenerate" : "Generate");
 
-      const headerHtml = q.header ? `<div class="q-header">${escapeHtml(q.header)}</div>` : "";
+      const headerHtml = `<div class="q-header">${q.header ? escapeHtml(q.header) : ""}</div>`;
 
       return headerHtml + `
         <div class="q-row ${q.asked ? "asked" : ""}" data-id="${q.id}">
@@ -446,13 +446,13 @@
 
   // ---------- generation ----------
   async function generateAudio(q) {
+    if (!state.apiKey) { alert("Please enter the ElevenLabs API key first."); return; }
     q.status = "generating";
     saveQuestions();
     render();
     try {
       const voiceId = q.voiceId || state.defaultVoiceId;
       if (!voiceId) throw new Error("no voice selected");
-      if (!state.apiKey) throw new Error("no API key");
       const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
         method: "POST",
         headers: {
